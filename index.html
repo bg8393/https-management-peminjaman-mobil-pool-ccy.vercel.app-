@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Management Peminjaman Unit Pool CCY</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDK Compat -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+    <style>
+        .car-panel-box {
+            border: 2px dashed #cbd5e1;
+            border-radius: 10px;
+            padding: 12px;
+            background: #f8fafc;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans pb-20">
+
+    <!-- Header dengan Tulisan Tebal Merah TOYOTA -->
+    <header class="bg-white border-b-2 border-red-600 p-3 shadow-md sticky top-0 z-50">
+        <div class="flex justify-between items-center max-w-md mx-auto">
+            <div class="flex items-center space-x-3">
+                <span class="text-red-600 font-black text-xl tracking-wider">TOYOTA</span>
+                <div>
+                    <h1 class="text-xs font-bold text-gray-800 leading-tight">Management Peminjaman</h1>
+                    <p class="text-[10px] text-red-600 font-semibold">Unit Pool CCY</p>
+                </div>
+            </div>
+            <span class="text-xs bg-red-100 text-red-700 font-bold px-2.5 py-1 rounded-full border border-red-300">Online</span>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto p-4 space-y-4">
+        
+        <!-- Tab Navigasi -->
+        <div class="flex bg-white rounded-lg p-1 shadow-sm">
+            <button onclick="switchTab('form')" id="tab-form" class="flex-1 py-2 text-sm font-semibold rounded-md bg-red-600 text-white transition">Form Pinjam</button>
+            <button onclick="switchTab('status')" id="tab-status" class="flex-1 py-2 text-sm font-semibold rounded-md text-gray-600 transition">Status & Riwayat</button>
+        </div>
+
+        <!-- Section Form Peminjaman -->
+        <section id="section-form" class="bg-white p-4 rounded-xl shadow-sm space-y-4">
+            <h2 class="font-bold text-gray-800 text-base border-b pb-2">Formulir Peminjaman & Checklist</h2>
+            
+            <form id="formPeminjaman" onsubmit="submitPeminjaman(event)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Peminjam *</label>
+                        <input type="text" id="nama" required class="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none" placeholder="Masukkan nama lengkap">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Kendaraan (Plat Nomor / Nama Unit) *</label>
+                        <input type="text" id="kendaraan" required class="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none uppercase" placeholder="Contoh: B 1285 UIG">
+                    </div>
+
+                    <!-- Jadwal Waktu & Durasi -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Tanggal & Jam Mulai *</label>
+                            <input type="datetime-local" id="waktuMulai" onchange="hitungDurasiOtomatis()" required class="w-full p-2 border rounded-lg text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Estimasi Selesai *</label>
+                            <input type="datetime-local" id="waktuSelesai" onchange="hitungDurasiOtomatis()" required class="w-full p-2 border rounded-lg text-xs">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Keterangan Durasi (Otomatis)</label>
+                        <input type="text" id="durasi" readonly class="w-full p-2 border rounded-lg text-xs bg-gray-100 text-gray-700 font-semibold" placeholder="Akan terhitung otomatis...">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Tujuan & Keperluan *</label>
+                        <input type="text" id="tujuan" required class="w-full p-2 border rounded-lg text-sm" placeholder="Contoh: Operasional Cabang Cikarang">
+                    </div>
+
+                    <!-- Cek Fisik Panel, Indikator & Interior -->
+                    <div>
+                        <label class="block text-xs font-bold text-red-600 mb-2"><i class="fa-solid fa-car-side"></i> Cek Fisik, Indikator & Interior (Wajib Diisi)</label>
+                        
+                        <div class="space-y-3">
+                            <!-- Depan -->
+                            <div class="car-panel-box">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-bold text-gray-700">🚗 Bagian Depan *</span>
+                                    <select id="cek-depan" onchange="toggleNgNote('depan')" class="text-xs p-1 border rounded bg-white font-semibold">
+                                        <option value="OK">OK (Baik)</option>
+                                        <option value="NG">NG (Tidak Baik)</option>
+                                    </select>
+                                </div>
+                                <input type="text" id="note-depan" class="w-full text-xs p-1.5 border rounded bg-white hidden mt-2" placeholder="Tuliskan keterangan kerusakan bagian depan...">
+                            </div>
+
+                            <!-- Belakang -->
+                            <div class="car-panel-box">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-bold text-gray-700">🚙 Bagian Belakang *</span>
+                                    <select id="cek-belakang" onchange="toggleNgNote('belakang')" class="text-xs p-1 border rounded bg-white font-semibold">
+                                        <option value="OK">OK (Baik)</option>
+                                        <option value="NG">NG (Tidak Baik)</option>
+                                    </select>
+                                </div>
+                                <input type="text" id="note-belakang" class="w-full text-xs p-1.5 border rounded bg-white hidden mt-2" placeholder="Tuliskan keterangan kerusakan bagian belakang...">
+                            </div>
+
+                            <!-- Kiri -->
+                            <div class="car-panel-box">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-bold text-gray-700">👈 Sisi Sebelah Kiri *</span>
+                                    <select id="cek-kiri" onchange="toggleNgNote('kiri')" class="text-xs p-1 border rounded bg-white font-semibold">
+                                        <option value="OK">OK (Baik)</option>
+                                        <option value="NG">NG (Tidak Baik)</option>
+                                    </select>
+                                </div>
+                                <input type="text" id="note-kiri" class="w-full text-xs p-1.5 border rounded bg-white hidden mt-2" placeholder="Tuliskan keterangan kerusakan sisi kiri...">
+                            </div>
+
+                            <!-- Kanan -->
+                            <div class="car-panel-box">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-bold text-gray-700">👉 Sisi Sebelah Kanan *</span>
+                                    <select id="cek-kanan" onchange="toggleNgNote('kanan')" class="text-xs p-1 border rounded bg-white font-semibold">
+                                        <option value="OK">OK (Baik)</option>
+                                        <option value="NG">NG (Tidak Baik)</option>
+                                    </select>
+                                </div>
+                                <input type="text" id="note-kanan" class="w-full text-xs p-1.5 border rounded bg-white hidden mt-2" placeholder="Tuliskan keterangan kerusakan sisi kanan...">
+                            </div>
+
+                            <!-- Cek Indikator -->
+                            <div class="car-panel-box">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-bold text-gray-700">⚠️ Cek Indikator *</span>
+                                    <select id="cek-indikator" onchange="toggleNgNote('indikator')" class="text-xs p-1 border rounded bg-white font-semibold">
+                                        <option value="OK">OK (Normal)</option>
+                                        <option value="NG">NG (Ada Kendala)</option>
+                                    </select>
+                                </div>
+                                <input type="text" id="note-indikator" class="w-full text-xs p-1.5 border rounded bg-white hidden mt-2" placeholder="Tuliskan keterangan lampu indikator (mis: Check Engine/Oli)...">
+                            </div>
+
+                            <!-- Cek Interior -->
+                            <div class="car-panel-box">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-bold text-gray-700">💺 Cek Interior *</span>
+                                    <select id="cek-interior" onchange="toggleNgNote('interior')" class="text-xs p-1 border rounded bg-white font-semibold">
+                                        <option value="OK">OK (Bersih & Berfungsi)</option>
+                                        <option value="NG">NG (Ada Kendala)</option>
+                                    </select>
+                                </div>
+                                <input type="text" id="note-interior" class="w-full text-xs p-1.5 border rounded bg-white hidden mt-2" placeholder="Tuliskan keterangan interior (mis: AC kurang dingin)...">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-red-600 text-white py-3 rounded-lg font-bold text-sm hover:bg-red-700 transition shadow-md cursor-pointer">
+                        Kirim Peminjaman
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Section Status & Riwayat -->
+        <section id="section-status" class="hidden space-y-4">
+            <div>
+                <h2 class="font-bold text-gray-800 text-base mb-2">Kendaraan Sedang Dipinjam</h2>
+                <div id="active-list" class="space-y-2">
+                    <p class="text-xs text-gray-500 text-center py-2">Memuat data...</p>
+                </div>
+            </div>
+
+            <hr class="my-3">
+
+            <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                    <h2 class="font-bold text-gray-800 text-base">Riwayat Peminjaman (Selesai)</h2>
+                    <select id="filterBulan" onchange="loadRentalsData()" class="text-xs p-1.5 border rounded-lg bg-white font-semibold text-gray-700">
+                        <option value="ALL">Semua Bulan</option>
+                        <option value="01">Januari</option>
+                        <option value="02">Februari</option>
+                        <option value="03">Maret</option>
+                        <option value="04">April</option>
+                        <option value="05">Mei</option>
+                        <option value="06">Juni</option>
+                        <option value="07">Juli</option>
+                        <option value="08">Agustus</option>
+                        <option value="09">September</option>
+                        <option value="10">Oktober</option>
+                        <option value="11">November</option>
+                        <option value="12">Desember</option>
+                    </select>
+                </div>
+                <!-- Container grid agar history tampil rapi, compact, dan tidak memanjang penuh ke bawah -->
+                <div id="history-list" class="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-1">
+                    <p class="text-xs text-gray-500 text-center py-2">Memuat riwayat...</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Konfirmasi Pengembalian Kendaraan -->
+    <div id="returnModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-sm w-full p-5 space-y-4 shadow-xl">
+            <h3 class="font-bold text-gray-800 text-base border-b pb-2">Konfirmasi Pengembalian Unit</h3>
+            <p class="text-xs text-gray-600">Masukkan KM dan BBM saat kendaraan dikembalikan:</p>
+            
+            <input type="hidden" id="returnKey">
+
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">KM Akhir *</label>
+                    <input type="number" id="returnKm" class="w-full p-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-green-500 outline-none" placeholder="Contoh: 25650">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">BBM Akhir *</label>
+                    <select id="returnBbm" class="w-full p-2 border rounded-lg text-sm bg-white">
+                        <option value="Full (Penuh)">Full (Penuh)</option>
+                        <option value="3/4">3/4</option>
+                        <option value="1/2 (Setengah)">1/2 (Setengah)</option>
+                        <option value="1/4 (Hampir Habis)">1/4 (Hampir Habis)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex space-x-2 pt-2">
+                <button type="button" onclick="closeReturnModal()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg font-semibold text-xs hover:bg-gray-400 transition">Batal</button>
+                <button type="button" onclick="processReturn()" class="flex-1 bg-green-600 text-white py-2 rounded-lg font-semibold text-xs hover:bg-green-700 transition">Selesaikan & Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyApsxF8q-nsgnK_QP5xvdjt5Pt6-wUi-k8",
+            authDomain: "kendaraan-pool-ccy.firebaseapp.com",
+            databaseURL: "https://kendaraan-pool-ccy-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "kendaraan-pool-ccy",
+            storageBucket: "kendaraan-pool-ccy.firebasestorage.app",
+            messagingSenderId: "647300046117",
+            appId: "1:647300046117:web:45b2f8b4ba9a9d789bcecc"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        function switchTab(tab) {
+            const formSec = document.getElementById('section-form');
+            const statusSec = document.getElementById('section-status');
+            const tabForm = document.getElementById('tab-form');
+            const tabStatus = document.getElementById('tab-status');
+
+            if(tab === 'form') {
+                formSec.classList.remove('hidden');
+                statusSec.classList.add('hidden');
+                tabForm.className = "flex-1 py-2 text-sm font-semibold rounded-md bg-red-600 text-white transition";
+                tabStatus.className = "flex-1 py-2 text-sm font-semibold rounded-md text-gray-600 transition";
+            } else {
+                formSec.classList.add('hidden');
+                statusSec.classList.remove('hidden');
+                tabStatus.className = "flex-1 py-2 text-sm font-semibold rounded-md bg-red-600 text-white transition";
+                tabForm.className = "flex-1 py-2 text-sm font-semibold rounded-md text-gray-600 transition";
+                loadRentalsData();
+            }
+        }
+
+        function hitungDurasiOtomatis() {
+            const mulai = document.getElementById('waktuMulai').value;
+            const selesai = document.getElementById('waktuSelesai').value;
+            const durasiInput = document.getElementById('durasi');
+
+            if (mulai && selesai) {
+                const start = new Date(mulai);
+                const end = new Date(selesai);
+                const diffMs = end - start;
+
+                if (diffMs > 0) {
+                    const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+                    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+                    let hasilText = '';
+                    if (diffHrs > 0) hasilText += `${diffHrs} Jam `;
+                    if (diffMins > 0) hasilText += `${diffMins} Menit`;
+                    
+                    durasiInput.value = hasilText.trim();
+                } else {
+                    durasiInput.value = 'Waktu selesai tidak valid!';
+                }
+            } else {
+                durasiInput.value = '';
+            }
+        }
+
+        function toggleNgNote(panel) {
+            const selectVal = document.getElementById(`cek-${panel}`).value;
+            const noteInput = document.getElementById(`note-${panel}`);
+            if(selectVal === 'NG') {
+                noteInput.classList.remove('hidden');
+                noteInput.required = true;
+                noteInput.focus();
+            } else {
+                noteInput.classList.add('hidden');
+                noteInput.required = false;
+                noteInput.value = '';
+            }
+        }
+
+        function submitPeminjaman(e) {
+            e.preventDefault();
+
+            const nama = document.getElementById('nama').value.trim();
+            const kendaraan = document.getElementById('kendaraan').value.trim().toUpperCase();
+            const waktuMulai = document.getElementById('waktuMulai').value;
+            const waktuSelesai = document.getElementById('waktuSelesai').value;
+            const durasi = document.getElementById('durasi').value.trim();
+            const tujuan = document.getElementById('tujuan').value.trim();
+
+            if (new Date(waktuMulai) >= new Date(waktuSelesai)) {
+                alert('Waktu selesai harus lebih besar dari waktu mulai peminjaman!');
+                return;
+            }
+
+            db.ref('peminjaman').once('value', (snapshot) => {
+                const data = snapshot.val();
+                let isConflict = false;
+                let conflictUser = '';
+
+                if (data) {
+                    const newStart = new Date(waktuMulai).getTime();
+                    const newEnd = new Date(waktuSelesai).getTime();
+
+                    for (let key in data) {
+                        let item = data[key];
+                        if (item.status === "Sedang Berlangsung" && item.kendaraan.trim().toUpperCase() === kendaraan) {
+                            if (item.waktuSelesai) {
+                                let existingStart = new Date(item.waktuMulai).getTime();
+                                let existingEnd = new Date(item.waktuSelesai).getTime();
+
+                                if (newStart < existingEnd && newEnd > existingStart) {
+                                    isConflict = true;
+                                    conflictUser = item.nama;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (isConflict) {
+                    alert(`⚠️ Gagal Memesan!\nKendaraan ${kendaraan} sudah dipinjam oleh "${conflictUser}" pada rentang waktu tersebut.\nSilakan pilih jam/jadwal lain yang kosong (free).`);
+                    return;
+                }
+
+                const cekFisik = {
+                    depan: { status: document.getElementById('cek-depan').value, note: document.getElementById('note-depan').value },
+                    belakang: { status: document.getElementById('cek-belakang').value, note: document.getElementById('note-belakang').value },
+                    kiri: { status: document.getElementById('cek-kiri').value, note: document.getElementById('note-kiri').value },
+                    kanan: { status: document.getElementById('cek-kanan').value, note: document.getElementById('note-kanan').value },
+                    indikator: { status: document.getElementById('cek-indikator').value, note: document.getElementById('note-indikator').value },
+                    interior: { status: document.getElementById('cek-interior').value, note: document.getElementById('note-interior').value }
+                };
+
+                const dataPeminjaman = {
+                    nama: nama,
+                    kendaraan: kendaraan,
+                    waktuMulai: waktuMulai,
+                    waktuSelesai: waktuSelesai,
+                    durasi: durasi,
+                    tujuan: tujuan,
+                    cekFisik: cekFisik,
+                    status: "Sedang Berlangsung",
+                    timestamp: Date.now()
+                };
+
+                db.ref('peminjaman').push(dataPeminjaman)
+                  .then(() => {
+                      alert('Peminjaman berhasil dikirim dan disetujui karena jadwal kosong!');
+                      document.getElementById('formPeminjaman').reset();
+                      
+                      ['depan', 'belakang', 'kiri', 'kanan', 'indikator', 'interior'].forEach(p => {
+                          document.getElementById(`note-${p}`).classList.add('hidden');
+                          document.getElementById(`note-${p}`).required = false;
+                      });
+
+                      switchTab('status');
+                  })
+                  .catch((error) => {
+                      alert('Gagal mengirim data: ' + error.message);
+                  });
+            });
+        }
+
+        function loadRentalsData() {
+            const activeContainer = document.getElementById('active-list');
+            const historyContainer = document.getElementById('history-list');
+            const selectedMonth = document.getElementById('filterBulan').value;
+
+            db.ref('peminjaman').on('value', (snapshot) => {
+                activeContainer.innerHTML = '';
+                historyContainer.innerHTML = '';
+                const data = snapshot.val();
+                
+                if (!data) {
+                    activeContainer.innerHTML = '<p class="text-xs text-gray-500 text-center py-2">Tidak ada kendaraan yang sedang dipinjam.</p>';
+                    historyContainer.innerHTML = '<p class="text-xs text-gray-500 text-center py-2">Belum ada riwayat peminjaman.</p>';
+                    return;
+                }
+
+                let activeHtml = '';
+                let historyHtml = '';
+
+                for (let key in data) {
+                    let item = data[key];
+                    
+                    let ngDetails = '';
+                    if (item.cekFisik) {
+                        let ngItems = [];
+                        for (let panel in item.cekFisik) {
+                            if (item.cekFisik[panel].status === 'NG') {
+                                let panelName = panel.toUpperCase();
+                                let noteText = item.cekFisik[panel].note ? ` (${item.cekFisik[panel].note})` : '';
+                                ngItems.push(`${panelName}: NG${noteText}`);
+                            }
+                        }
+                        if (ngItems.length > 0) {
+                            ngDetails = `<p class="text-xs text-red-600 mt-1 font-semibold">⚠️ Catatan NG: ${ngItems.join(' | ')}</p>`;
+                        } else {
+                            ngDetails = `<p class="text-xs text-green-600 mt-1">✅ Checklist Fisik: Semua OK</p>`;
+                        }
+                    }
+
+                    let scheduleText = item.waktuSelesai ? `Mulai: ${item.waktuMulai} s/d ${item.waktuSelesai} (${item.durasi})` : `Mulai: ${item.waktuMulai} (Durasi: ${item.durasi})`;
+
+                    if (item.status === "Sedang Berlangsung") {
+                        activeHtml += `
+                        <div class="bg-white p-3 rounded-xl shadow-sm border-l-4 border-red-600 flex justify-between items-center mb-2">
+                            <div>
+                                <p class="font-bold text-sm text-gray-800">${item.kendaraan}</p>
+                                <p class="text-xs text-gray-600">Peminjam: <strong>${item.nama}</strong></p>
+                                <p class="text-xs text-gray-500">${scheduleText}</p>
+                                <p class="text-xs text-gray-400">Tujuan: ${item.tujuan}</p>
+                                ${ngDetails}
+                            </div>
+                            <button onclick="openReturnModal('${key}')" class="bg-green-600 text-white text-xs px-3 py-1.5 rounded-lg font-semibold hover:bg-green-700">Selesai</button>
+                        </div>`;
+                    } else {
+                        // Filter berdasarkan bulan dari waktuMulai (format yyyy-mm-ddThh:mm)
+                        if (selectedMonth !== 'ALL') {
+                            if (item.waktuMulai) {
+                                let itemMonth = item.waktuMulai.substring(5, 7);
+                                if (itemMonth !== selectedMonth) continue;
+                            } else {
+                                continue;
+                            }
+                        }
+
+                        let kmBbmInfo = item.kmAkhir ? `<p class="text-xs text-gray-500 mt-1 font-medium">KM Pengembalian: ${item.kmAkhir} | BBM Akhir: ${item.bbmAkhir}</p>` : '';
+                        historyHtml += `
+                        <div class="bg-white p-3 rounded-xl shadow-sm border-l-4 border-gray-400 opacity-90 text-xs space-y-1">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-sm text-gray-800">${item.kendaraan}</span>
+                                <span class="text-[10px] bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded">Selesai</span>
+                            </div>
+                            <p class="text-gray-600">Peminjam: <strong>${item.nama}</strong></p>
+                            <p class="text-gray-500">${scheduleText} | Tujuan: ${item.tujuan}</p>
+                            ${kmBbmInfo}
+                            ${ngDetails}
+                        </div>`;
+                    }
+                }
+                
+                activeContainer.innerHTML = activeHtml !== '' ? activeHtml : '<p class="text-xs text-gray-500 text-center py-2">Tidak ada kendaraan yang sedang dipinjam.</p>';
+                historyContainer.innerHTML = historyHtml !== '' ? historyHtml : '<p class="text-xs text-gray-500 text-center py-2">Tidak ada riwayat pada bulan ini.</p>';
+            });
+        }
+
+        function openReturnModal(key) {
+            document.getElementById('returnKey').value = key;
+            document.getElementById('returnKm').value = '';
+            document.getElementById('returnBbm').value = 'Full (Penuh)';
+            document.getElementById('returnModal').classList.remove('hidden');
+        }
+
+        function closeReturnModal() {
+            document.getElementById('returnModal').classList.add('hidden');
+        }
+
+        function processReturn() {
+            const key = document.getElementById('returnKey').value;
+            const kmAkhir = document.getElementById('returnKm').value;
+            const bbmAkhir = document.getElementById('returnBbm').value;
+
+            if (!kmAkhir) {
+                alert('Mohon isi KM Akhir kendaraan terlebih dahulu!');
+                return;
+            }
+
+            db.ref('peminjaman/' + key).update({ 
+                status: "Selesai",
+                kmAkhir: kmAkhir,
+                bbmAkhir: bbmAkhir
+            })
+            .then(() => {
+                alert('Pengembalian berhasil dicatat! Kendaraan kini kembali tersedia.');
+                closeReturnModal();
+            })
+            .catch((error) => {
+                alert('Gagal memperbarui status: ' + error.message);
+            });
+        }
+    </script>
+</body>
+</html>
